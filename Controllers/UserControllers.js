@@ -40,6 +40,129 @@ exports.sendMail  =  (req,res)=>{
 }
 
 
+
+exports.VerifyOtp = (req,res) =>{
+   const {email ,  otp   , n_pass} =  req.body
+
+   UserSchema.find({email :  email}).then((r1)=>{
+      if(r1.length >  0)
+      {
+            var u_id =  r1[0]._id
+
+            console.log(u_id)
+
+            OtpSchema.find({  uid : u_id }).then((r2)=>{
+                if(r2.length > 0 )
+                {
+
+
+                    if(otp == r2[0].otp)
+                    {
+
+                          
+                            if((Number(new Date(Date.now))   -  Number(r2[0].time)) >  60000   )
+                            {
+                                res.status(401).send({status : 401  , message :"OTP has expired"})
+                            }
+                            else
+                            {   
+
+                                    bcrypt.genSalt(10 ,  function(err , salt){
+                                        if(err){
+                                            res.status(500).send({status : 500  , message :"Something Went Wrong"})
+
+                                        }
+                                        else
+                                        {
+                                            bcrypt.hash(n_pass ,  salt ,  function(err,hash){
+
+                                                if(err){
+                                                    res.status(500).send({status : 500  , message :"Something Went Wrong"})
+        
+                                                }
+                                                else
+                                                {
+
+                                                    UserSchema.updateOne({ email : email } , {$set : {password  : hash}}).then((r6)=>{
+                                                            if(r6.modifiedCount  == 1)
+                                                            {
+
+                                                                transporter.sendMail({
+                                                                    from: '"MY-ECOM 👻" <webt5987@gmail.com>', // sender address
+                                                                    to: email, // list of receivers
+                                                                    subject: "Password Reset ", // Subject line
+                                                                    text: "Password Reset ", // plain text body
+                                                                    html: `<h1>Hi ${r1[0].name} !! Your Password is Reset Successfully Just Now </h1>`, // html body
+                                                                  }).then((result_m)=>{
+                                                                        if(result_m.hasOwnProperty('accepted') && result_m['accepted'].length > 0 && result_m['messageId'] !== null )
+                                                                        {
+                                                                            res.status(200).send({status : 200  , message :"Password Reset Successfully"})  
+
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
+                                                        
+                                                                        }
+                                                                  }).catch((err)=>{
+                                                                    res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
+                                                        
+                                                                  })   
+                                                            }
+                                                            else{
+                                                                res.status(400).send({status : 400  , message :"Something Went Wrong Try Again"})  
+
+                                                            }
+                                                    }).catch((err)=>{
+                                                        res.status(500).send({status : 500  , message :"Something Went Wrong Try Again"})  
+
+                                                    })
+                                                }
+                                            })
+                                        }
+
+                                    })
+
+
+                            }
+                    }
+                    else
+                    {
+                        res.status(401).send({status : 401  , message :"OTP Didn't Match !!"})
+
+                    }
+                    
+                  
+
+                    
+
+
+                }else
+                {
+                    res.status(400).send({status : 400  , message :"Something Went Wrong"})
+
+                }
+            }).catch((err)=>{
+                console.log(err)
+                res.status(500).send({status : 500  , message :"Something Went Wrong"})
+
+            })
+      }
+      else
+      {
+
+        res.status(400).send({status : 400  , message :"Something Went Wrong"})
+
+      }
+
+   }).catch((err)=>{
+    res.status(500).send({status : 500  , message :"Something Went Wrong"})
+
+   })
+
+}
+
+
 exports.forgotPassword = (req,res)=>{
 const {email} =  req.body;
 var otp  =  Math.floor(Math.random() *  167899).toString().padStart(6,0)
@@ -51,43 +174,97 @@ UserSchema.find({email :  email}).then((result)=>{
         var uid  =  result[0]._id;
 
 
-        transporter.sendMail({
-            from: '"Fred Foo 👻" <webt5987@gmail.com>', // sender address
-            to: email, // list of receivers
-            subject: "Password Reset OTP", // Subject line
-            text: "OTP", // plain text body
-            html: `<h1>Hi ${result[0].name} !! Your Password Reset OTP is ${otp} </h1>`, // html body
-          }).then((result_m)=>{
-                if(result_m.hasOwnProperty('accepted') && result_m['accepted'].length > 0 && result_m['messageId'] !== null )
-                {
-                    OtpSchema.insertMany({uid :  uid ,  otp :  otp ,  time : Number(new Date(Date.now())) }).then((result2)=>{
-                        if(result2.length > 0)
-                        {                    
-                            
-                            res.status(200).send({status : 200 , message  : "OTP Sent Successfully on your mail"})
+        OtpSchema.deleteOne({ uid : uid }).then((dres)=>{
 
+            if(dres.deletedCount == 1)
+            {
 
+                transporter.sendMail({
+                    from: '"MY-ECOM 👻" <webt5987@gmail.com>', // sender address
+                    to: email, // list of receivers
+                    subject: "Password Reset OTP", // Subject line
+                    text: "OTP", // plain text body
+                    html: `<h1>Hi ${result[0].name} !! Your Password Reset OTP is ${otp} </h1>`, // html body
+                  }).then((result_m)=>{
+                        if(result_m.hasOwnProperty('accepted') && result_m['accepted'].length > 0 && result_m['messageId'] !== null )
+                        {
+                            OtpSchema.insertMany({uid :  uid ,  otp :  otp ,  time : Number(new Date(Date.now())) }).then((result2)=>{
+                                if(result2.length > 0)
+                                {                    
+                                    
+                                    res.status(200).send({status : 200 , message  : "OTP Sent Successfully on your mail"})
+        
+        
+                                }
+                                else
+                                {
+                                    res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
+        
+                                }
+                            }).catch((err)=>{
+                                res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
+        
+                            })
                         }
                         else
                         {
                             res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
-
+        
                         }
-                    }).catch((err)=>{
-                        res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
-
-                    })
-                }
-                else
-                {
+                  }).catch((err)=>{
                     res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
+        
+                  })
+        
 
-                }
-          }).catch((err)=>{
+            }else
+            {
+                transporter.sendMail({
+                    from: '"Fred Foo 👻" <webt5987@gmail.com>', // sender address
+                    to: email, // list of receivers
+                    subject: "Password Reset OTP", // Subject line
+                    text: "OTP", // plain text body
+                    html: `<h1>Hi ${result[0].name} !! Your Password Reset OTP is ${otp} </h1>`, // html body
+                  }).then((result_m)=>{
+                        if(result_m.hasOwnProperty('accepted') && result_m['accepted'].length > 0 && result_m['messageId'] !== null )
+                        {
+                            OtpSchema.insertMany({uid :  uid ,  otp :  otp ,  time : Number(new Date(Date.now())) }).then((result2)=>{
+                                if(result2.length > 0)
+                                {                    
+                                    
+                                    res.status(200).send({status : 200 , message  : "OTP Sent Successfully on your mail"})
+        
+        
+                                }
+                                else
+                                {
+                                    res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
+        
+                                }
+                            }).catch((err)=>{
+                                res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
+        
+                            })
+                        }
+                        else
+                        {
+                            res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
+        
+                        }
+                  }).catch((err)=>{
+                    res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
+        
+                  })
+        
+            }
+
+        }).catch((err)=>{
             res.status(500).send({status : 500 , message  : "Seomthing Went Wrong !! Try Again"})
 
-          })
+        })
 
+
+        
         
 
     }

@@ -7,6 +7,7 @@ router.post('/add-user' ,UserControllers.addUser  )
 router.post('/login-user' ,UserControllers.login  )
 router.post('/send-mail' ,  UserControllers.sendMail)
 router.post('/forgot-password' ,  UserControllers.forgotPassword)
+router.post('/verify-otp' ,  UserControllers.VerifyOtp)
 
 
 module.exports = router;
